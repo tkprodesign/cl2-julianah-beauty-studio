@@ -1,0 +1,33 @@
+name: Sync Repository to Dropbox
+
+on:
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install Dropbox CLI
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y zip curl
+
+      - name: Zip Repository
+        run: |
+          zip -r repository.zip . \
+            -x ".git/*" \
+            -x ".github/*"
+
+      - name: Upload to Dropbox
+        env:
+          DROPBOX_ACCESS_TOKEN: ${{ secrets.DROPBOX_ACCESS_TOKEN }}
+        run: |
+          curl -X POST https://content.dropboxapi.com/2/files/upload \
+            --header "Authorization: Bearer $DROPBOX_ACCESS_TOKEN" \
+            --header "Dropbox-API-Arg: {\"path\":\"/Julianah Beauty Studio Brand Management/repository.zip\",\"mode\":\"overwrite\",\"autorename\":false}" \
+            --header "Content-Type: application/octet-stream" \
+            --data-binary @repository.zip
