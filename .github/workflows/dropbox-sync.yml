@@ -1,6 +1,9 @@
 name: Sync Repository to Dropbox
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
@@ -11,23 +14,23 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Install Dropbox CLI
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y zip curl
+      - name: Install rclone
+        run: curl https://rclone.org/install.sh | sudo bash
 
-      - name: Zip Repository
+      - name: Configure rclone
         run: |
-          zip -r repository.zip . \
-            -x ".git/*" \
-            -x ".github/*"
+          mkdir -p ~/.config/rclone
+          cat > ~/.config/rclone/rclone.conf <<EOF
+          [dropbox]
+          type = dropbox
+          token = {"access_token":"${{ secrets.DROPBOX_ACCESS_TOKEN }}","token_type":"bearer"}
+          EOF
 
-      - name: Upload to Dropbox
-        env:
-          DROPBOX_ACCESS_TOKEN: ${{ secrets.DROPBOX_ACCESS_TOKEN }}
+      - name: Sync to Dropbox
         run: |
-          curl -X POST https://content.dropboxapi.com/2/files/upload \
-            --header "Authorization: Bearer $DROPBOX_ACCESS_TOKEN" \
-            --header "Dropbox-API-Arg: {\"path\":\"/Julianah Beauty Studio Brand Management/repository.zip\",\"mode\":\"overwrite\",\"autorename\":false}" \
-            --header "Content-Type: application/octet-stream" \
-            --data-binary @repository.zip
+          rclone sync . dropbox:"Julianah Beauty Studio Brand Management" \
+            --exclude ".git/**" \
+            --exclude ".github/**"
+
+      - name: Verify
+        run: rclone lsf dropbox:"Julianah Beauty Studio Brand Management"
